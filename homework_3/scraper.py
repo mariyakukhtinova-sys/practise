@@ -30,7 +30,6 @@ def get_book_data(book_url: str) -> dict:
         requests.RequestException: При ошибках сетевого запроса
     """
 
-    # НАЧАЛО ВАШЕГО РЕШЕНИЯ
     response = requests.get(book_url)
     response.raise_for_status()
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -85,7 +84,6 @@ def get_book_data(book_url: str) -> dict:
     result['product_info'] = dict(zip(ks, vs))
 
     return result
-# КОНЕЦ ВАШЕГО РЕШЕНИЯ
 
 
 def scrape_catalog(debug: bool = False) -> list:
@@ -124,12 +122,13 @@ def scrape_catalog(debug: bool = False) -> list:
                 time.sleep(5)
                 continue
 
-        # with open('catalog_pages.pkl', 'wb') as f:
+        # Запишем распаршенные адреса книг один раз, чтобы ускорить дебаг
+        # with open('./artifacts/catalog_pages.pkl', 'wb') as f:
         #     pickle.dump(pages, f)
 
     elif debug:
 
-        with open('catalog_pages.pkl', 'rb') as f:
+        with open('./artifacts/catalog_pages.pkl', 'rb') as f:
             pages = pickle.load(f)
 
         print(f"Loaded {len(pages)} pages from file")
@@ -186,10 +185,14 @@ def scrape_books(book_urls: list, is_save: bool = False,
             except requests.exceptions.RequestException:
                 if attempt < 2:  # Not the last attempt
                     print(
-                        f"Failed to load {book_url}, retry attempt {attempt}")
+                        f"Failed to load book No {i}: {book_url},\
+                         retry attempt {attempt+1}")
                     time.sleep(2)
                     continue
-                print(f"Failed to load {book_url} after 3 attempts")
+                print(
+                    f"Failed to load book No {i}: {book_url}\
+                    after 3 attempts"
+                )
 
         #print(f"Loaded book No {i}: {book_url}")
 
@@ -203,27 +206,38 @@ def scrape_books(book_urls: list, is_save: bool = False,
     end_time = time.time()
 
     execution_time = end_time - start_time
-    print(f"Catalog scraping took {execution_time:.2f} seconds")
+    print(
+        f"Book scraping took {execution_time:.2f} seconds\
+        and returned {len(books_data)} books"
+    )
 
     return books_data
 
 
-def job():
-    print("Запуск сбора данных по таймеру...")
-    books = scrape_catalog(debug=False)
-    res = scrape_books(is_save=True, book_urls=books, debug=False)
-    print("Сбор данных завершен.")
+if __name__ == "main":
+    def job() -> None:
+        """
+        Вызов всех функций парсинга с нужными параметрами,
+        оформленный в одну функцию для удобства запуска по таймингу.
+
+        Args:
+            None
+        Return:
+            None
+        """
+        print("Запуск сбора данных по таймеру...")
+        books = scrape_catalog(debug=False)
+        res = scrape_books(is_save=True, book_urls=books, debug=False)
+        print("Сбор данных завершен.")
 
 
-# Запланировать задачу на 19:00 каждый день
-schedule.every().day.at("14:19").do(job)
+    # Запланировать задачу на 19:00 каждый день
+    #schedule.every().day.at("21:58").do(job)
+    schedule.every().day.at("19:00").do(job)
 
-while True:
-    schedule.run_pending()  # Проверяет и запускает задачи по расписанию
-    time.sleep(30)          # Ждем 30 секунд перед следующей проверкой
+    while True:
+        schedule.run_pending()  # Проверяет и запускает задачи по расписанию
+        time.sleep(30)          # Ждем 30 секунд перед следующей проверкой
 
-
-# КОНЕЦ ВАШЕГО РЕШЕНИЯ
-# books = scrape_catalog(debug=False)
-# scrape_books(book_urls=books, debug=False, is_save=True)
-
+    # books = scrape_catalog(debug=True)
+    # scrape_books(book_urls=books, debug=True, is_save=True)
